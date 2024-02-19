@@ -369,6 +369,12 @@ func decryptFile(source string) ([]byte, error) {
 		return nil, errors.Wrap(err, "could not read file")
 	}
 
+	_,found := os.LookupEnv("SOPS_DRY_RUN");
+
+	if (found) {
+		return content, nil;
+	}
+
 	decrypted, err := decrypt.DataWithFormat(content, formats.FormatForPath(source))
 	if err != nil {
 		return nil, errors.Wrap(err, "sops could not decrypt")
