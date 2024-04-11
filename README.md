@@ -102,7 +102,7 @@ metadata:
 
 ### SOPS Dry Run Mode
 
-You can bypass the SOPS description process if you lack access to your keys and simply wish to ensure that the kustomize command executes correctly (can be useful for CI).
+You can bypass the SOPS decryption process if you lack access to your keys and simply wish to ensure that the kustomize command executes correctly (can be useful for CI).
 
 set SOPS_DRY_RUN env variable before running kustomize command as follow:
 
