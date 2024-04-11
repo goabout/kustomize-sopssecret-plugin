@@ -151,6 +151,48 @@ func Test_GenerateKRMManifest(t *testing.T) {
 	}
 }
 
+func Test_ProcessSopsSecretGenerator_SopsDryRun(t *testing.T) {
+	
+	type args struct {
+		fn string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			"SopsSecretGenerator",
+			args{"testdata/generator-with-env.yaml"},
+			strings.TrimLeft(dedent.Dedent(`
+				apiVersion: v1
+				kind: Secret
+				metadata:
+				    name: secret
+				data:
+				    VAR_ENV: SOPS_ENCRYPTED_DATA_OMITTED
+				    file.txt: SOPS_ENCRYPTED_DATA_OMITTED
+			`), "\n"),
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("SOPS_DRY_RUN", "true")
+			sopsSecretGeneratorManifest, _ := ioutil.ReadFile(tt.args.fn)
+			got, err := processSopsSecretGenerator(sopsSecretGeneratorManifest)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("processSopsSecretGenerator() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("processSopsSecretGenerator() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_ProcessSopsSecretGenerator(t *testing.T) {
 	type args struct {
 		fn string
@@ -456,26 +498,25 @@ func Test_parseDotEnvLine(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    kvMap
+		want    []string
 		wantErr bool
 	}{
-		{"Variable", args{b("VAR=value")}, kvMap{"VAR": b64("value")}, false},
-		{"TrimLeft", args{b(" VAR=value")}, kvMap{"VAR": b64("value")}, false},
-		{"EmptyLine", args{b("")}, kvMap{}, false},
-		{"Comment", args{b("# Comment")}, kvMap{}, false},
-		{"NoValue", args{b("VAR")}, kvMap{}, true},
-		{"InvalidUTF8", args{[]byte{0xff, 0xfe, 0xfd}}, kvMap{}, true},
+		{"Variable", args{b("VAR=value")}, []string{"VAR", "value"}, false},
+		{"TrimLeft", args{b("VAR=value")}, []string{"VAR", "value"}, false},
+		{"EmptyLine", args{b("")}, nil, false},
+		{"Comment", args{b("# Comment")}, nil, false},
+		{"NoValue", args{b("VAR")}, nil, true},
+		{"InvalidUTF8", args{[]byte{0xff, 0xfe, 0xfd}}, nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := make(kvMap)
-			err := parseDotEnvLine(tt.args.line, got)
+			pair, err := parseDotEnvLine(tt.args.line)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseDotEnvLine() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseDotEnvLine() got = %v, want %v", got, tt.want)
+			}  
+			if !reflect.DeepEqual(pair, tt.want) {
+				t.Errorf("parseDotEnvLine() got = %v, want %v", pair, tt.want)
 			}
 		})
 	}

@@ -8,7 +8,6 @@
 
 SecretGenerator ❤ sops
 
-
 ## Why use this?
 
 [Kustomize](https://github.com/kubernetes-sigs/kustomize) is a great tool for implementing a [GitOps](https://www.weave.works/blog/gitops-operations-by-pull-request) workflow. When a repository describes the entire system state, it often contains secrets that need to be encrypted at rest. Mozilla's [sops](https://github.com/mozilla/sops) is a simple and flexible tool that is very suitable for that task.
@@ -19,9 +18,7 @@ Since version 1.5.0, the plugin can be used as a [KRM Function](https://github.c
 
 Credit goes to [Seth Pollack](https://github.com/sethpollack) for the [Kustomize Secret Generator Plugins KEP](https://github.com/kubernetes/enhancements/blob/master/keps/sig-cli/kustomize-secret-generator-plugins.md) and subsequent implementation that made this possible.
 
-
 ## Installation
-
 
 SopsSecretGenerator is available as a binary, or as a Docker image.
 
@@ -30,6 +27,7 @@ SopsSecretGenerator is available as a binary, or as a Docker image.
 Download the `SopsSecretGenerator` binary for your platform from the [GitHub releases page](https://github.com/goabout/kustomize-sopssecretgenerator/releases) and make it executable.
 
 For example, to install version 1.6.0 on Linux:
+
 ```bash
 VERSION=1.6.0 PLATFORM=linux ARCH=amd64
 curl -Lo SopsSecretGenerator "https://github.com/goabout/kustomize-sopssecretgenerator/releases/download/v${VERSION}/SopsSecretGenerator_${VERSION}_${PLATFORM}_${ARCH}"
@@ -38,15 +36,14 @@ chmod +x SopsSecretGenerator
 
 You do not need to install the `sops` binary for the plugin to work. The plugin includes and calls sops internally.
 
-
 ### Docker image
 
 See the [goabout/kustomize-sopssecretgenerator](https://hub.docker.com/repository/docker/goabout/kustomize-sopssecretgenerator) image at Docker Hub.
 
-
 ## Usage
 
 Create some encrypted values using `sops`:
+
 ```bash
 echo FOO=secret >secret-vars.env
 sops -e -i secret-vars.env
@@ -55,12 +52,12 @@ echo secret >secret-file.txt
 sops -e -i secret-file.txt
 ```
 
-
 ### Exec KRM Function
 
 Although the generator can run in a Docker container, any real usage requires to access to local resources such as the filesystem or a PGP socket. This example calls the binary directly.
 
 Add a generator to your kustomization:
+
 ```bash
 cat <<. >kustomization.yaml
 generators:
@@ -90,8 +87,9 @@ Run `kustomize build` with the `--enable-alpha-plugins` and `--enable-exec` flag
 ```bash
 kustomize build --enable-alpha-plugins --enable-exec
 ```
-    
+
 The output is a Kubernetes secret containing the decrypted data:
+
 ```yaml
 apiVersion: v1
 data:
@@ -102,16 +100,40 @@ metadata:
   name: my-secret-6d2fchb89d
 ```
 
+### SOPS Dry Run Mode
+
+You can bypass the SOPS decryption process if you lack access to your keys and simply wish to ensure that the kustomize command executes correctly (can be useful for CI).
+
+set SOPS_DRY_RUN env variable before running kustomize command as follow:
+
+```bash
+export SOPS_DRY_RUN=true
+kustomize build --enable-alpha-plugins --enable-exec
+```
+
+The output is a Kubernetes secret containing the decrypted data with a placeholder value SOPS_ENCRYPTED_DATA_OMITTED:
+
+```yaml
+apiVersion: v1
+data:
+  FOO: SOPS_ENCRYPTED_DATA_OMITTED
+  secret-file.txt: SOPS_ENCRYPTED_DATA_OMITTED
+kind: Secret
+metadata:
+  name: my-secret-6d2fchb89d
+```
 
 ### Legacy Plugin
 
 First, install the plugin to `$XDG_CONFIG_HOME`: (By default, `$XDG_CONFIG_HOME` points to `$HOME/.config` on Linux and OS X, and `%LOCALAPPDATA%` on Windows.)
+
 ```bash
 mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/kustomize/plugin/goabout.com/v1beta1/sopssecretgenerator"
 mv SopsSecretGenerator "${XDG_CONFIG_HOME:-$HOME/.config}/kustomize/plugin/goabout.com/v1beta1/sopssecretgenerator"
 ```
 
 Add a generator to your kustomization:
+
 ```bash
 cat <<. >kustomization.yaml
 generators:
@@ -129,7 +151,6 @@ files:
   - secret-file.txt
 .
 ```
-
 
 ### Generator Options
 
@@ -157,37 +178,33 @@ An example showing all options:
       - secret-file2.txt=secret-file2.sops.txt
     type: Opaque
 
-
 ## Using SopsSecretsGenerator with ArgoCD
 
 SopsSecretGenerator can be added to ArgoCD by [patching](./docs/argocd.md) an initContainer into the ArgoCD provided `install.yaml`.
-
 
 ## Alternatives
 
 There are a number of other plugins that can serve the same function:
 
-* [viaduct-ai/kustomize-sops](https://github.com/viaduct-ai/kustomize-sops)
-* [Agilicus/kustomize-sops](https://github.com/Agilicus/kustomize-sops)
-* [barlik/kustomize-sops](https://github.com/barlik/kustomize-sops)
-* [monopole/sopsencodedsecrets](https://github.com/monopole/sopsencodedsecrets)
-* [omninonsense/kustomize-sopsgenerator](https://github.com/omninonsense/kustomize-sopsgenerator)
-* [whatever-company/secretgen](https://github.com/whatever-company/secretgen)
+- [viaduct-ai/kustomize-sops](https://github.com/viaduct-ai/kustomize-sops)
+- [Agilicus/kustomize-sops](https://github.com/Agilicus/kustomize-sops)
+- [barlik/kustomize-sops](https://github.com/barlik/kustomize-sops)
+- [monopole/sopsencodedsecrets](https://github.com/monopole/sopsencodedsecrets)
+- [omninonsense/kustomize-sopsgenerator](https://github.com/omninonsense/kustomize-sopsgenerator)
+- [whatever-company/secretgen](https://github.com/whatever-company/secretgen)
 
 Additionally, there are other ways to use sops-encrypted secrets in Kubernetes:
 
-* [isindir/sops-secrets-operator](https://github.com/isindir/sops-secrets-operator)
-* [craftypath/sops-operator](https://github.com/craftypath/sops-operator)
-* [jkroepke/helm-secrets](https://github.com/jkroepke/helm-secrets)
-* [dschniepp/sealit](https://github.com/dschniepp/sealit)
+- [isindir/sops-secrets-operator](https://github.com/isindir/sops-secrets-operator)
+- [craftypath/sops-operator](https://github.com/craftypath/sops-operator)
+- [jkroepke/helm-secrets](https://github.com/jkroepke/helm-secrets)
+- [dschniepp/sealit](https://github.com/dschniepp/sealit)
 
 Most of these projects are in constant development. I invite you to check them out and pick the project that best fits your goals.
-
 
 ## Development
 
 You will need [Go](https://golang.org) 1.17 or higher to develop and build the plugin.
-
 
 ### Test
 
@@ -199,20 +216,18 @@ In order to create encrypted test data, you need to import the secret key from `
 
     cd testdata
     gpg --import keyring.gpg
-    
+
 You can then use `sops` to create encrypted files:
 
     sops -e -i newfile.txt
-
 
 ### Build
 
 Create a binary for your system:
 
     make
-    
-The resulting executable will be named `SopsSecretGenerator`.
 
+The resulting executable will be named `SopsSecretGenerator`.
 
 ### Release
 
