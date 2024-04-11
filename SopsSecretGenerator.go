@@ -88,6 +88,8 @@ func usage() {
 	os.Exit(1)
 }
 
+var sopsDryRunPlaceholder = "SOPS_DRYRUN_PLACEHOLDER"
+
 func main() {
 	argsLen := len(os.Args)
 
@@ -300,33 +302,33 @@ func parseDotEnvContent(content []byte, data kvMap) error {
 		if lineNum == 0 {
 			line = bytes.TrimPrefix(line, utf8bom)
 		}
-		err := parseDotEnvLine(line, data)
+		pair, err := parseDotEnvLine(line)
 		if err != nil {
 			return errors.Wrapf(err, "line %d", lineNum)
 		}
+		setValue(pair[0], pair[1], data)
 		lineNum++
 	}
 	return scanner.Err()
 }
 
-func parseDotEnvLine(line []byte, data kvMap) error {
+func parseDotEnvLine(line []byte) (pair []string , err error) {
 	if !utf8.Valid(line) {
-		return fmt.Errorf("invalid UTF-8 bytes: %v", string(line))
+		return nil, fmt.Errorf("invalid UTF-8 bytes: %v", string(line))
 	}
 
 	line = bytes.TrimLeftFunc(line, unicode.IsSpace)
 
 	if len(line) == 0 || line[0] == '#' {
-		return nil
+		return nil, nil
 	}
 
-	pair := strings.SplitN(string(line), "=", 2)
-	if len(pair) != 2 {
-		return fmt.Errorf("requires value: %v", string(line))
+	kvPair := strings.SplitN(string(line), "=", 2)
+	if len(kvPair) != 2 {
+		return nil, fmt.Errorf("requires value: %v", string(line))
 	}
 
-	data[pair[0]] = base64.StdEncoding.EncodeToString([]byte(pair[1]))
-	return nil
+	return kvPair, nil
 }
 
 func parseYAMLContent(content []byte, data kvMap) error {
@@ -335,8 +337,9 @@ func parseYAMLContent(content []byte, data kvMap) error {
 	if err != nil {
 		return err
 	}
+
 	for k, v := range d {
-		data[k] = base64.StdEncoding.EncodeToString([]byte(v))
+		setValue(k, v, data)
 	}
 	return nil
 }
@@ -348,9 +351,17 @@ func parseJSONContent(content []byte, data kvMap) error {
 		return err
 	}
 	for k, v := range d {
-		data[k] = base64.StdEncoding.EncodeToString([]byte(v))
+		setValue(k, v, data)
 	}
 	return nil
+}
+
+func setValue(k string, v string, data kvMap) {
+	if isSopsDryRun() && !isSopsKey(k) {
+		data[k] = base64.StdEncoding.EncodeToString([]byte(sopsDryRunPlaceholder))
+	} else if !isSopsDryRun() {
+		data[k] = base64.StdEncoding.EncodeToString([]byte(v))
+	}
 }
 
 func parseFileSources(sources []string, data kvMap) error {
@@ -363,16 +374,21 @@ func parseFileSources(sources []string, data kvMap) error {
 	return nil
 }
 
+func isSopsDryRun() bool {
+	if (os.Getenv("SOPS_DRY_RUN") == "true") {
+		return true;
+	}
+	return false;
+}
+
 func decryptFile(source string) ([]byte, error) {
 	content, err := ioutil.ReadFile(source)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not read file")
 	}
 
-	_,found := os.LookupEnv("SOPS_DRY_RUN");
-
-	if (found) {
-		return content, nil;
+	if isSopsDryRun() {
+		return content, nil
 	}
 
 	decrypted, err := decrypt.DataWithFormat(content, formats.FormatForPath(source))
@@ -386,6 +402,11 @@ func parseFileSource(source string, data kvMap) error {
 	key, fn, err := parseFileName(source)
 	if err != nil {
 		return err
+	}
+
+	if isSopsDryRun() {
+		data[key] = base64.StdEncoding.EncodeToString([]byte(sopsDryRunPlaceholder))
+		return nil
 	}
 
 	decrypted, err := decryptFile(fn)
@@ -414,4 +435,12 @@ func parseFileName(source string) (key string, fn string, err error) {
 	default:
 		return "", "", errors.New("key names or file paths cannot contain '='")
 	}
+}
+
+func isSopsKey(key string) bool {
+	if strings.HasPrefix(key, "sops") {
+		return true;
+	}
+	
+	return false;
 }
