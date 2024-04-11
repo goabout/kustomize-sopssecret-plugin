@@ -503,6 +503,10 @@ func Test_parseDotEnvLine(t *testing.T) {
 	}{
 		{"Variable", args{b("VAR=value")}, []string{"VAR", "value"}, false},
 		{"TrimLeft", args{b("VAR=value")}, []string{"VAR", "value"}, false},
+		{"EmptyLine", args{b("")}, nil, false},
+		{"Comment", args{b("# Comment")}, nil, false},
+		{"NoValue", args{b("VAR")}, nil, true},
+		{"InvalidUTF8", args{[]byte{0xff, 0xfe, 0xfd}}, nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
