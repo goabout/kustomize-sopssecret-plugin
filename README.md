@@ -104,20 +104,20 @@ metadata:
 
 You can skip SOPS descyption process when you don't have an access to your keys and you just want to verify that kustomize command runs properly:
 
-set SOPS_DRY_RUN env variable before running kustomize command.
+set SOPS_DRY_RUN env variable before running kustomize command as follow:
 
 ```bash
 export SOPS_DRY_RUN=true
 kustomize build --enable-alpha-plugins --enable-exec
 ```
 
-The output is a Kubernetes secret containing the decrypted data with a placeholder value encrypted in base64:
+The output is a Kubernetes secret containing the decrypted data with a placeholder value SOPS_ENCRYPTED_DATA_OMITTED:
 
 ```yaml
 apiVersion: v1
 data:
-  FOO: U09QU19EUllSVU5fUExBQ0VIT0xERVI=
-  secret-file.txt: U09QU19EUllSVU5fUExBQ0VIT0xERVI=
+  FOO: SOPS_ENCRYPTED_DATA_OMITTED
+  secret-file.txt: SOPS_ENCRYPTED_DATA_OMITTED
 kind: Secret
 metadata:
   name: my-secret-6d2fchb89d

@@ -88,7 +88,7 @@ func usage() {
 	os.Exit(1)
 }
 
-var sopsDryRunPlaceholder = "SOPS_DRYRUN_PLACEHOLDER"
+var sopsDryRunPlaceholder = "SOPS_ENCRYPTED_DATA_OMITTED"
 
 func main() {
 	argsLen := len(os.Args)
@@ -358,7 +358,7 @@ func parseJSONContent(content []byte, data kvMap) error {
 
 func setValue(k string, v string, data kvMap) {
 	if isSopsDryRun() && !isSopsKey(k) {
-		data[k] = base64.StdEncoding.EncodeToString([]byte(sopsDryRunPlaceholder))
+		data[k] = sopsDryRunPlaceholder
 	} else if !isSopsDryRun() {
 		data[k] = base64.StdEncoding.EncodeToString([]byte(v))
 	}
@@ -405,7 +405,7 @@ func parseFileSource(source string, data kvMap) error {
 	}
 
 	if isSopsDryRun() {
-		data[key] = base64.StdEncoding.EncodeToString([]byte(sopsDryRunPlaceholder))
+		data[key] = sopsDryRunPlaceholder
 		return nil
 	}
 

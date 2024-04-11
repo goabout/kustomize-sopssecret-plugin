@@ -171,8 +171,8 @@ func Test_ProcessSopsSecretGenerator_SopsDryRun(t *testing.T) {
 				metadata:
 				    name: secret
 				data:
-				    VAR_ENV: U09QU19EUllSVU5fUExBQ0VIT0xERVI=
-				    file.txt: U09QU19EUllSVU5fUExBQ0VIT0xERVI=
+				    VAR_ENV: SOPS_ENCRYPTED_DATA_OMITTED
+				    file.txt: SOPS_ENCRYPTED_DATA_OMITTED
 			`), "\n"),
 			false,
 		},
